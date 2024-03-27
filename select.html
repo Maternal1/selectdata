@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title> Get FHIR Resource</title>
+    <script src="setting.js"></script>
+    <script src="HTTP2024.js"></script>
+    <style type="text/css">
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            position: relative;
+            background-color: #F5DEC7;
+        }
+
+        #Title {
+            margin: 5px auto;
+            padding: 15px 25px;
+            width: 90%;
+            border-left: 10px solid #ff6a00;
+            font-size: 27px;
+            font-weight: bold;
+        }
+
+        .Step {
+            margin: 10px auto;
+            width: 93%;
+        }
+
+        .Title {
+            margin: 5px auto;
+            width: 95%;
+            font-size: 21px;
+            font-weight: bold;
+        }
+
+        .Content {
+            margin: 20px auto;
+            width: 86%;
+            font-size: 30px;
+        }
+
+        input[type=text] {
+            padding: 10px;
+            width: 85%;
+            font-size: 17px;
+        }
+
+        input[type=button] {
+            margin: 10px auto;
+            padding: 15px 0;
+            width: 17%;
+            font-size: 25px;
+        }
+
+        select {
+            margin: 10px;
+            padding: 10px;
+            font-size: 17px;
+        }
+
+        #Step2 input {
+            width: 23%;
+        }
+
+        #Step3 input[type=text] {
+            margin: 10px;
+            width: 77%;
+        }
+
+        textarea {
+            padding: 80px;
+            width: 95%;
+            min-height: 350px;
+            font-size: 28px;
+        }
+
+        #title {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            padding: 10px;
+            color: #EFCFAE;
+        }
+
+        #Step4 input[type=button] {
+            position: absolute;
+            margin-top: 110px;
+            border: 0cap;
+            background-color: #EFCFAE;
+        }
+
+        #Step4 textarea {
+            margin-top: 190px;
+            border: 0cap;
+            /* 調整上邊距 */
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="Step4" class="Step">
+        <div class="Content">
+            <input id="Button2" onclick="getData()" type="button" value="查詢" />
+            <textarea id="TextArea1"></textarea>
+        </div>
+    </div>
+    <script>
+        let patientId = "";
+        function receiveValueFromFlutter(value) {
+            patientId = value;
+        }
+        function sendHttpGet(url, callback) {
+            fetch(url)
+                .then(response => response.text())
+                .then(data => callback(data))
+                .catch(error => console.error('Error:', error));
+        }
+
+        function getData() {
+            const apiURL = "https://fhir.tcumi.com:58443/r5/fhir/Observation?patient=" + patientId;
+            sendHttpGet(apiURL, callBack);
+        }
+
+        function callBack(ret) {
+            const bundle = JSON.parse(ret);
+
+            if (bundle.resourceType === "Bundle") {
+                const sortedEntries = bundle.entry.sort((a, b) => {
+                    const dateA = new Date(a.resource.effectiveDateTime);
+                    const dateB = new Date(b.resource.effectiveDateTime);
+                    return dateA - dateB;
+                });
+
+                let output = "";
+
+                sortedEntries.forEach(entry => {
+                    const thisResource = entry.resource;
+                    const observationDate = new Date(thisResource.effectiveDateTime).toLocaleDateString();
+                    const weight = thisResource.component.find(component => component.code.coding[0].code === "29463-7").valueQuantity.value;
+                    const DBP = thisResource.component.find(component => component.code.coding[0].code === "8462-4").valueQuantity.value;
+                    const SBP = thisResource.component.find(component => component.code.coding[0].code === "8480-6").valueQuantity.value;
+                    const Sugar = thisResource.component.find(component => component.code.coding[0].code === "15074-8").valueQuantity.value;
+                    const heartRate = thisResource.component.find(component => component.code.coding[0].code === "8867-4").valueQuantity.value;
+                    const bodyTemperature = thisResource.component.find(component => component.code.coding[0].code === "8310-5").valueQuantity.value;
+
+                    output += `日期: ${observationDate}\n`;
+                    output += `體重: ${weight}\n`;
+                    output += `血壓: ${DBP} / ${SBP}\n`;
+                    output += `血糖: ${Sugar}\n`;
+                    output += `心率: ${heartRate}\n`;
+                    output += `體溫: ${bodyTemperature}\n`;
+                    output += "-----------------\n";
+                });
+
+                document.getElementById("TextArea1").value = output;
+            }
+        }
+
+        function goHome() {
+            window.location.href = "web.html";
+        }
+    </script>
+</body>
+
+</html>
